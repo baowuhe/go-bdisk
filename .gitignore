@@ -1,0 +1,91 @@
+# binfile
+go-bdisk
+.claude/
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+go-bdisk
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.txt
+*.cover
+*.coverprofile
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency directories
+vendor/
+
+# IDE and editor files
+# VS Code
+.vscode/
+*.code-workspace
+
+# GoLand
+.idea/
+*.iml
+
+# Vim
+*.swp
+*.swo
+*~
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Build output
+dist/
+build/
+
+# Debugging
+debug
+debug.test
+__debug_bin
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Token and config files (go-bdisk specific)
+token.json
+config.yaml
+
+# ZIP files
+*.zip
+
+# Logs
+*.log
+logs/
