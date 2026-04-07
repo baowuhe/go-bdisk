@@ -10,8 +10,11 @@ import (
 	"mime/multipart"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/baowuhe/go-bdisk/pkg/bdisk/model"
 )
 
 // 分片大小：官方 demo 使用 4MB
@@ -35,54 +38,67 @@ type UploadService struct {
 }
 
 // Start 开始上传文件
-func (u *UploadService) Start(localPath, remotePath string) error {
+func (u *UploadService) Start(localPath, remotePath string) (string, error) {
 	return u.StartWithProgress(localPath, remotePath, nil)
 }
 
-// StartWithProgress 开始上传文件，带进度回调
-func (u *UploadService) StartWithProgress(localPath, remotePath string, callback UploadProgressCallback) error {
+// StartWithProgress 开始上传文件，带进度回调，返回实际使用的远程路径
+func (u *UploadService) StartWithProgress(localPath, remotePath string, callback UploadProgressCallback) (string, error) {
 	if u.client.token == nil || !u.client.token.IsValid() {
-		return ErrTokenExpired
+		return "", ErrTokenExpired
 	}
 
 	// 打开本地文件
 	file, err := os.Open(localPath)
 	if err != nil {
-		return fmt.Errorf("open file failed: %w", err)
+		return "", fmt.Errorf("open file failed: %w", err)
 	}
 	defer file.Close()
 
 	// 获取文件信息
 	fileInfo, err := file.Stat()
 	if err != nil {
-		return fmt.Errorf("stat file failed: %w", err)
+		return "", fmt.Errorf("stat file failed: %w", err)
 	}
 
 	fileSize := fileInfo.Size()
 
+	// 获取本地文件名
+	localFileName := filepath.Base(localPath)
+
+	// 检查目标路径是否为文件夹，如果是则拼接文件名
+	destInfo, err := u.client.File.GetInfo(remotePath)
+	if err == nil && destInfo.Type == model.FileTypeDir {
+		// 目标为文件夹，将本地文件名拼接到目标路径
+		remotePath = strings.TrimSuffix(remotePath, "/") + "/" + localFileName
+	} else if err != nil {
+		// 目标路径不存在或其他错误，不拼接，直接使用原路径
+		// 只有目标是已存在的文件夹时才拼接文件名
+	}
+
 	// 计算文件分片的 MD5 列表
 	blockList, err := u.calculateBlockMD5(file, fileSize)
 	if err != nil {
-		return fmt.Errorf("calculate block MD5 failed: %w", err)
+		return "", fmt.Errorf("calculate block MD5 failed: %w", err)
 	}
 
 	// 步骤 1: precreate - 预上传
 	precreateRet, err := u.precreate(remotePath, fileSize, blockList)
 	if err != nil {
-		return fmt.Errorf("precreate failed: %w", err)
+		return "", fmt.Errorf("precreate failed: %w", err)
 	}
 
 	// 步骤 2: upload - 分片上传
 	if err := u.uploadParts(file, fileSize, remotePath, precreateRet.Uploadid, callback); err != nil {
-		return fmt.Errorf("upload parts failed: %w", err)
+		return "", fmt.Errorf("upload parts failed: %w", err)
 	}
 
 	// 步骤 3: create - 创建文件
 	if _, err := u.create(remotePath, fileSize, blockList, precreateRet.Uploadid); err != nil {
-		return fmt.Errorf("create failed: %w", err)
+		return "", fmt.Errorf("create failed: %w", err)
 	}
 
-	return nil
+	return remotePath, nil
 }
 
 // calculateBlockMD5 计算每个分片的 MD5

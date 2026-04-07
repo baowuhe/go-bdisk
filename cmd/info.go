@@ -10,7 +10,7 @@ import (
 )
 
 var infoCmd = &cobra.Command{
-	Use:   "info",
+	Use:   "status",
 	Short: "查询用户信息和网盘配额",
 	Long:  `查询当前登录用户的信息和网盘配额使用情况`,
 	RunE:  runInfo,

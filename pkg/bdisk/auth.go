@@ -78,6 +78,12 @@ func (a *AuthService) DeviceCodeFlow() (*DeviceCodeResponse, error) {
 	}
 	defer resp.Body.Close()
 
+	// 检查 HTTP 状态码
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("HTTP error: status=%d, body=%s", resp.StatusCode, string(body))
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -98,30 +104,48 @@ func (a *AuthService) DeviceCodeFlow() (*DeviceCodeResponse, error) {
 	return &result.DeviceCodeResponse, nil
 }
 
-// PollToken 轮询获取令牌，直到成功获取token
+// PollToken 轮询获取令牌，直到成功获取token或超时
 func (a *AuthService) PollToken(deviceCode string, interval int) (*Token, error) {
-	// 轮询间隔5秒（百度API要求最小5秒）
-	pollInterval := 5
+	// 轮询间隔不小于5秒（百度API要求最小5秒）
+	pollInterval := interval
 	if pollInterval < 5 {
 		pollInterval = 5
 	}
 
+	// 最大等待时间10分钟（百度设备码有效期通常是10分钟）
+	maxWait := 10 * time.Minute
+	startTime := time.Now()
+
 	pollCount := 0
 	for {
+		// 检查是否超时
+		if time.Since(startTime) > maxWait {
+			return nil, fmt.Errorf("授权超时，请重新尝试")
+		}
+
 		pollCount++
 		// 倒计时显示
 		for i := pollInterval; i > 0; i-- {
-			fmt.Printf("\r等待授权中 [第%d次查询结果，%d秒后进行下一次] ...", pollCount, i)
+			remaining := maxWait - time.Since(startTime)
+			if remaining < 0 {
+				remaining = 0
+			}
+			fmt.Printf("\r等待授权中 [剩余%.0f秒，第%d次查询，%d秒后下一次] ...", remaining.Seconds(), pollCount, i)
 			time.Sleep(1 * time.Second)
 		}
 
-		token, _ := a.getToken(deviceCode)
+		token, err := a.getToken(deviceCode)
+		if err != nil {
+			// HTTP 错误不打印，静默继续轮询
+			continue
+		}
 
 		// 成功获取 token
 		if token != nil && token.AccessToken != "" {
 			fmt.Printf("\r等待授权中 [第%d次查询结果，授权成功]          \n", pollCount)
 			return token, nil
 		}
+		// token == nil && err == nil 表示"还没授权，继续轮询"
 	}
 }
 
@@ -139,6 +163,12 @@ func (a *AuthService) getToken(deviceCode string) (*Token, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	// 检查 HTTP 状态码
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("HTTP error: status=%d, body=%s", resp.StatusCode, string(body))
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -165,8 +195,8 @@ func (a *AuthService) getToken(deviceCode string) (*Token, error) {
 	// 解析 token 响应
 	var tokenResp TokenResponse
 	if err := json.Unmarshal(body, &tokenResp); err != nil {
-		// JSON解析失败，继续轮询
-		return nil, nil
+		// JSON解析失败，这是真正的错误，不是"继续轮询"
+		return nil, fmt.Errorf("failed to parse token response: %w", err)
 	}
 
 	// 如果没有获取到 token，返回 nil 而不是错误，让调用者继续轮询
@@ -209,6 +239,12 @@ func (a *AuthService) RefreshToken(refreshToken string) (*Token, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	// 检查 HTTP 状态码
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("HTTP error: status=%d, body=%s", resp.StatusCode, string(body))
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

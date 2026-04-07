@@ -31,7 +31,7 @@
 | `cp <src> <dest>` | 复制文件/文件夹 |
 | `mv <src> <dest>` | 移动文件/文件夹 |
 | `rm <path> [...]` | 删除文件/文件夹（支持批量） |
-| `info` | 查看用户信息和网盘配额 |
+| `status` | 查看用户信息和网盘配额 |
 
 ### SDK 功能
 
@@ -157,7 +157,7 @@ go-bdisk rm /文件 1.txt /文件 2.txt /文件夹
 #### 6. 查看用户信息
 
 ```bash
-go-bdisk info
+go-bdisk status
 ```
 
 #### 7. 退出登录
@@ -244,13 +244,13 @@ func main() {
 
 | 系统 | 路径 |
 |------|------|
-| Linux | `~/.config/go-bdisk/` |
-| macOS | `~/Library/Application Support/go-bdisk/` |
-| Windows | `%LOCALAPPDATA%\go-bdisk\` |
+| Linux | `~/.local/cfg/bdisk/` |
+| macOS | `~/Library/Application Support/bdisk/` |
+| Windows | `%LOCALAPPDATA%\bdisk\` |
 
 ### 配置文件
 
-- `config.yaml` - 存储应用 Key 和密钥
+- `bdisk.yml` - 存储应用 Key 和密钥
 - `token.json` - 存储访问令牌
 
 ## 注意事项

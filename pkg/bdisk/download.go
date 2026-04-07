@@ -1,7 +1,6 @@
 package bdisk
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -130,7 +129,15 @@ func (d *DownloadService) getDlinkFromMultimedia(fsID int64, path string) (strin
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	// 检查 HTTP 状态码
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("HTTP error: status=%d, body=%s", resp.StatusCode, string(body))
+	}
+
+	// 限制响应体大小为 10MB
+	limitedReader := io.LimitReader(resp.Body, 10*1024*1024)
+	body, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return "", err
 	}
@@ -169,14 +176,6 @@ func (d *DownloadService) downloadFileOfficial(dlink, localPath, fileName string
 	// 构建下载 URL：dlink + "&access_token=" + access_token
 	downloadURL := dlink + "&access_token=" + d.client.token.AccessToken
 
-	// 创建跳过 TLS 验证的 transport（官方 demo 使用）
-	tr := &http.Transport{
-		MaxIdleConnsPerHost: -1,
-		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
-	}
-
-	httpClient := &http.Client{Transport: tr}
-
 	// 创建 POST 请求（官方 demo 使用 POST）
 	req, err := http.NewRequest("POST", downloadURL, nil)
 	if err != nil {
@@ -186,8 +185,8 @@ func (d *DownloadService) downloadFileOfficial(dlink, localPath, fileName string
 	// 设置 User-Agent（官方要求）
 	req.Header.Set("User-Agent", "pan.baidu.com")
 
-	// 发送请求
-	resp, err := httpClient.Do(req)
+	// 发送请求，使用客户端的 http.Client（已配置好 TLS）
+	resp, err := d.client.http.Do(req)
 	if err != nil {
 		return err
 	}

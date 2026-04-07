@@ -477,19 +477,23 @@ err := client.File.Copy("/源/文件.txt", "/目标文件夹", "newcopy")
 
 **方法签名：**
 ```go
-func (f *FileService) Move(srcPath, destPath string, ondup ...string) error
+func (f *FileService) Move(srcPath, destPath string, ondup ...string) (string, error)
 ```
 
 **参数：**
 | 参数 | 类型 | 说明 |
 |------|------|------|
 | srcPath | string | 源文件/文件夹路径 |
-| destPath | string | 目标文件夹路径 |
+| destPath | string | 目标文件夹路径，若不存在则直接移动到该路径 |
 | ondup | string | 重名处理策略（可选）：`fail`(默认)、`newcopy`(覆盖)、`skip`(跳过) |
+
+**返回值：**
+- `string` - 实际移动到的目标路径
+- `error` - 移动失败时返回错误
 
 **示例：**
 ```go
-err := client.File.Move("/旧位置/文件.txt", "/新位置")
+actualPath, err := client.File.Move("/旧位置/文件.txt", "/新位置")
 ```
 
 ### Delete
@@ -677,16 +681,17 @@ type ProgressCallback func(progress DownloadProgress)
 
 **方法签名：**
 ```go
-func (u *UploadService) Start(localPath, remotePath string) error
+func (u *UploadService) Start(localPath, remotePath string) (string, error)
 ```
 
 **参数：**
 | 参数 | 类型 | 说明 |
 |------|------|------|
 | localPath | string | 本地文件路径 |
-| remotePath | string | 网盘保存路径（包含文件名） |
+| remotePath | string | 网盘保存路径（包含文件名），若为目标文件夹则自动拼接文件名 |
 
 **返回值：**
+- `string` - 实际保存的网盘路径
 - `error` - 上传失败时返回错误
 
 **示例：**
@@ -703,15 +708,19 @@ if err != nil {
 
 **方法签名：**
 ```go
-func (u *UploadService) StartWithProgress(localPath, remotePath string, callback UploadProgressCallback) error
+func (u *UploadService) StartWithProgress(localPath, remotePath string, callback UploadProgressCallback) (string, error)
 ```
 
 **参数：**
 | 参数 | 类型 | 说明 |
 |------|------|------|
 | localPath | string | 本地文件路径 |
-| remotePath | string | 网盘保存路径 |
+| remotePath | string | 网盘保存路径，若为目标文件夹则自动拼接文件名 |
 | callback | UploadProgressCallback | 进度回调函数 |
+
+**返回值：**
+- `string` - 实际保存的网盘路径
+- `error` - 上传失败时返回错误
 
 **示例：**
 ```go

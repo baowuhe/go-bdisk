@@ -28,7 +28,7 @@ type FileManagerReturn struct {
 
 // fileManager 调用文件管理接口
 func (f *FileService) fileManager(opera string, async string, fileList []FileListInfo) (*FileManagerReturn, error) {
-	uri := "http://pan.baidu.com/rest/2.0/xpan/file?method=filemanager&"
+	uri := "https://pan.baidu.com/rest/2.0/xpan/file?method=filemanager&"
 
 	params := url.Values{}
 	params.Set("access_token", f.client.token.AccessToken)
@@ -188,14 +188,30 @@ func (f *FileService) Copy(srcPath, destPath string, ondup ...string) error {
 	return err
 }
 
-// Move 移动文件/文件夹
+// Move 移动文件/文件夹，返回实际的目标路径
 // srcPath: 源路径
 // destPath: 目标路径（文件夹）
 // ondup: 重名处理策略，可选值：fail(默认，失败), newcopy(覆盖), skip(跳过)
-func (f *FileService) Move(srcPath, destPath string, ondup ...string) error {
+func (f *FileService) Move(srcPath, destPath string, ondup ...string) (string, error) {
 	ondupValue := "fail"
 	if len(ondup) > 0 {
 		ondupValue = ondup[0]
+	}
+
+	// 获取源文件信息，用于提取文件名
+	srcInfo, err := f.GetInfo(srcPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to get source file info: %w", err)
+	}
+
+	// 检查目标路径是否为文件夹，如果是则拼接源文件名
+	destInfo, err := f.GetInfo(destPath)
+	if err == nil && destInfo.Type == model.FileTypeDir {
+		// 目标为文件夹，将源文件名拼接到目标路径
+		destPath = strings.TrimSuffix(destPath, "/") + "/" + srcInfo.Name
+	} else if err != nil {
+		// 目标路径不存在或其他错误，不拼接，直接使用原路径
+		// 只有目标是已存在的文件夹时才拼接文件名
 	}
 
 	fileList := []FileListInfo{
@@ -206,8 +222,8 @@ func (f *FileService) Move(srcPath, destPath string, ondup ...string) error {
 		},
 	}
 
-	_, err := f.fileManager("move", "2", fileList)
-	return err
+	_, err = f.fileManager("move", "2", fileList)
+	return destPath, err
 }
 
 // Delete 删除文件/文件夹

@@ -1,7 +1,7 @@
 package bdisk
 
 import (
-	"crypto/tls"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -68,7 +68,6 @@ func (c *Client) ClearToken() {
 
 // doHTTPRequest 发送 HTTP 请求（参考官方 demo）
 func (c *Client) doHTTPRequest(urlStr string, body io.Reader, headers map[string]string) (string, int, error) {
-	timeout := 60 * time.Second
 	retryTimes := 3
 
 	var resp *http.Response
@@ -78,15 +77,6 @@ func (c *Client) doHTTPRequest(urlStr string, body io.Reader, headers map[string
 		// 如果是 *strings.Reader 或 *bytes.Reader，需要重置位置
 		if seeker, ok := body.(io.Seeker); ok {
 			seeker.Seek(0, io.SeekStart)
-		}
-
-		tr := &http.Transport{
-			TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
-			MaxIdleConnsPerHost: -1,
-		}
-		httpClient := &http.Client{
-			Transport: tr,
-			Timeout:   timeout,
 		}
 
 		req, err := http.NewRequest("POST", urlStr, body)
@@ -99,7 +89,7 @@ func (c *Client) doHTTPRequest(urlStr string, body io.Reader, headers map[string
 			req.Header.Add(k, v)
 		}
 
-		resp, err = httpClient.Do(req)
+		resp, err = c.http.Do(req)
 		if err == nil {
 			break
 		}
@@ -110,8 +100,21 @@ func (c *Client) doHTTPRequest(urlStr string, body io.Reader, headers map[string
 		time.Sleep(time.Second)
 	}
 
+	// resp 可能为 nil（所有重试都失败）
+	if resp == nil {
+		return "", 0, fmt.Errorf("request failed after %d retries", retryTimes)
+	}
 	defer resp.Body.Close()
-	respBody, err := io.ReadAll(resp.Body)
+
+	// 检查 HTTP 状态码
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return "", resp.StatusCode, fmt.Errorf("HTTP error: status=%d, body=%s", resp.StatusCode, string(respBody))
+	}
+
+	// 限制响应体大小为 100MB，防止恶意服务器发送大量数据
+	limitedReader := io.LimitReader(resp.Body, 100*1024*1024)
+	respBody, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return "", resp.StatusCode, err
 	}

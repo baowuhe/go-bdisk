@@ -43,7 +43,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	}
 
 	// 上传文件
-	err = client.Upload.StartWithProgress(localPath, remotePath, func(progress bdisk.UploadProgress) {
+	actualRemotePath, err := client.Upload.StartWithProgress(localPath, remotePath, func(progress bdisk.UploadProgress) {
 		if outputJSON {
 			// JSON 格式：打印 JSON 行
 			jsonProgress := map[string]interface{}{
@@ -91,12 +91,12 @@ func runUpload(cmd *cobra.Command, args []string) error {
 
 	data := resultData{
 		LocalPath:  localPath,
-		RemotePath: remotePath,
+		RemotePath: actualRemotePath,
 		Message:    "上传成功",
 	}
 
 	cliutil.PrintOutput(outputJSON, data, func() {
-		fmt.Printf("上传成功：%s -> %s\n", localPath, remotePath)
+		fmt.Printf("上传成功：%s -> %s\n", localPath, actualRemotePath)
 	})
 
 	return nil

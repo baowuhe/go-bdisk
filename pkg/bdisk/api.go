@@ -35,7 +35,15 @@ func (c *Client) doRequest(method, endpoint string, params url.Values, result in
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	// 检查 HTTP 状态码
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("HTTP error: status=%d, body=%s", resp.StatusCode, string(body))
+	}
+
+	// 限制响应体大小为 100MB，防止恶意服务器发送大量数据
+	limitedReader := io.LimitReader(resp.Body, 100*1024*1024)
+	body, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return err
 	}

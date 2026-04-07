@@ -39,7 +39,7 @@ func runMv(cmd *cobra.Command, args []string) error {
 		fmt.Printf("正在移动：%s -> %s\n", srcPath, destPath)
 	}
 
-	err = client.File.Move(srcPath, destPath, ondup)
+	actualDestPath, err := client.File.Move(srcPath, destPath, ondup)
 	if err != nil {
 		if bdisk.IsTokenExpiredError(err) {
 			client.Auth.ClearToken()
@@ -59,12 +59,12 @@ func runMv(cmd *cobra.Command, args []string) error {
 
 	data := resultData{
 		Source:      srcPath,
-		Destination: destPath,
+		Destination: actualDestPath,
 		Message:     "移动成功",
 	}
 
 	cliutil.PrintOutput(outputJSON, data, func() {
-		fmt.Printf("移动成功：%s -> %s\n", srcPath, destPath)
+		fmt.Printf("移动成功：%s -> %s\n", srcPath, actualDestPath)
 	})
 
 	return nil
