@@ -27,12 +27,18 @@ func NewClient(config *Config) (*Client, error) {
 		return nil, err
 	}
 
-	// 创建禁用自动解压的 HTTP Transport
-	transport := &http.Transport{}
+	// 创建 HTTP Transport 和 Client，设置合理超时
+	transport := &http.Transport{
+		MaxIdleConnsPerHost: 10,
+	}
+	httpClient := &http.Client{
+		Transport: transport,
+		Timeout:   5 * time.Minute,
+	}
 
 	c := &Client{
 		config: config,
-		http:   &http.Client{Transport: transport},
+		http:   httpClient,
 	}
 
 	// 初始化子服务

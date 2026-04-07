@@ -17,9 +17,15 @@ var (
 type APIError struct {
 	ErrCode int    `json:"errno"`
 	ErrMsg  string `json:"errmsg"`
+	// OAuth标准错误格式
+	OAuthErr string `json:"error"`
+	ErrDesc  string `json:"error_description"`
 }
 
 func (e *APIError) Error() string {
+	if e.ErrDesc != "" {
+		return e.ErrDesc
+	}
 	return e.ErrMsg
 }
 

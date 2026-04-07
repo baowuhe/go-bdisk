@@ -70,12 +70,11 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		fmt.Printf(`{"success":true,"data":{"verification_url":"%s","user_code":"%s"}}`+"\n",
 			deviceResp.VerificationURL, deviceResp.UserCode)
 	} else {
-		fmt.Println("=")
+		fmt.Println("----------")
 		fmt.Println("请使用浏览器访问以下链接并输入验证码：")
 		fmt.Printf("验证链接: %s\n", deviceResp.VerificationURL)
 		fmt.Printf("验证码: %s\n", deviceResp.UserCode)
-		fmt.Println("=")
-		fmt.Println("正在等待授权...")
+		fmt.Println("----------")
 	}
 
 	// 轮询获取token

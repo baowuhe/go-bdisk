@@ -2,7 +2,6 @@ package bdisk
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -99,48 +98,29 @@ func (a *AuthService) DeviceCodeFlow() (*DeviceCodeResponse, error) {
 	return &result.DeviceCodeResponse, nil
 }
 
-// PollToken 轮询获取令牌
+// PollToken 轮询获取令牌，直到成功获取token
 func (a *AuthService) PollToken(deviceCode string, interval int) (*Token, error) {
-	// 设置最小轮询间隔，避免过于频繁
-	if interval < 5 {
-		interval = 5
+	// 轮询间隔5秒（百度API要求最小5秒）
+	pollInterval := 5
+	if pollInterval < 5 {
+		pollInterval = 5
 	}
 
-	ticker := time.NewTicker(time.Duration(interval) * time.Second)
-	defer ticker.Stop()
-
+	pollCount := 0
 	for {
-		token, err := a.getToken(deviceCode)
-		if err != nil {
-			var apiErr *APIError
-			if errors.As(err, &apiErr) {
-				// 授权等待中，继续轮询
-				// 40023: 授权码已过期 (需要重新获取设备码)
-				// 40024: 用户尚未授权 (继续轮询)
-				// 40025: 授权码已使用 (需要重新获取设备码)
-				if apiErr.ErrCode == 40024 {
-					// 用户尚未授权，继续轮询
-					select {
-					case <-ticker.C:
-						continue
-					}
-				}
-				// 其他错误，返回
-				return nil, err
-			}
-			// 非 API 错误，返回
-			return nil, err
+		pollCount++
+		// 倒计时显示
+		for i := pollInterval; i > 0; i-- {
+			fmt.Printf("\r等待授权中 [第%d次查询结果，%d秒后进行下一次] ...", pollCount, i)
+			time.Sleep(1 * time.Second)
 		}
+
+		token, _ := a.getToken(deviceCode)
 
 		// 成功获取 token
 		if token != nil && token.AccessToken != "" {
+			fmt.Printf("\r等待授权中 [第%d次查询结果，授权成功]          \n", pollCount)
 			return token, nil
-		}
-
-		// 如果 token 为空，继续轮询
-		select {
-		case <-ticker.C:
-			continue
 		}
 	}
 }
@@ -165,16 +145,28 @@ func (a *AuthService) getToken(deviceCode string) (*Token, error) {
 		return nil, err
 	}
 
-	// 先尝试解析为错误
+	// 先尝试解析为错误（支持百度errno格式和OAuth标准error格式）
 	var apiErr APIError
-	if err := json.Unmarshal(body, &apiErr); err == nil && apiErr.ErrCode != 0 {
-		return nil, &apiErr
+	if err := json.Unmarshal(body, &apiErr); err == nil {
+		// 检查百度自定义errno格式
+		if apiErr.ErrCode != 0 {
+			return nil, &apiErr
+		}
+		// 检查OAuth标准error格式
+		if apiErr.OAuthErr != "" {
+			// slow_down不是失败，只是让减慢轮询速度，返回nil让调用方继续轮询
+			if apiErr.OAuthErr == "slow_down" {
+				return nil, nil
+			}
+			return nil, &apiErr
+		}
 	}
 
 	// 解析 token 响应
 	var tokenResp TokenResponse
 	if err := json.Unmarshal(body, &tokenResp); err != nil {
-		return nil, err
+		// JSON解析失败，继续轮询
+		return nil, nil
 	}
 
 	// 如果没有获取到 token，返回 nil 而不是错误，让调用者继续轮询

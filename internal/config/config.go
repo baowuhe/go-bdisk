@@ -32,7 +32,7 @@ func NewManager() (*Manager, error) {
 	}
 
 	v := viper.New()
-	v.SetConfigName("config")
+	v.SetConfigName("bdisk")
 	v.SetConfigType("yaml")
 	v.AddConfigPath(configDir)
 
@@ -61,7 +61,7 @@ func (m *Manager) TokenPath() string {
 func (m *Manager) Save(cfg *Config) error {
 	m.v.Set("app_key", cfg.AppKey)
 	m.v.Set("secret_key", cfg.SecretKey)
-	return m.v.WriteConfigAs(filepath.Join(m.configDir, "config.yaml"))
+	return m.v.WriteConfigAs(filepath.Join(m.configDir, "bdisk.yml"))
 }
 
 // Load 加载配置
@@ -78,7 +78,7 @@ func (m *Manager) Load() (*Config, error) {
 func getConfigDir() (string, error) {
 	// 首先检查环境变量
 	if xdgConfigHome := os.Getenv("XDG_CONFIG_HOME"); xdgConfigHome != "" {
-		return filepath.Join(xdgConfigHome, "go-bdisk"), nil
+		return filepath.Join(xdgConfigHome, "bdisk"), nil
 	}
 
 	// 根据操作系统获取标准配置目录
@@ -94,18 +94,18 @@ func getConfigDir() (string, error) {
 		if appData == "" {
 			appData = filepath.Join(home, "AppData", "Local")
 		}
-		configDir = filepath.Join(appData, "go-bdisk")
+		configDir = filepath.Join(appData, "bdisk")
 	case os.Getenv("HOME") != "": // macOS/Linux
 		// 检查是否是macOS
 		if _, err := os.Stat(filepath.Join(home, "Library", "Application Support")); err == nil {
-			configDir = filepath.Join(home, "Library", "Application Support", "go-bdisk")
+			configDir = filepath.Join(home, "Library", "Application Support", "bdisk")
 		} else {
-			// Linux
-			configDir = filepath.Join(home, ".config", "go-bdisk")
+			// Linux: ~/.local/cfg/bdisk
+			configDir = filepath.Join(home, ".local", "cfg", "bdisk")
 		}
 	default:
-		// 回退到用户目录下的.go-bdisk
-		configDir = filepath.Join(home, ".go-bdisk")
+		// 回退到用户目录下的.bdisk
+		configDir = filepath.Join(home, ".bdisk")
 	}
 
 	return configDir, nil
