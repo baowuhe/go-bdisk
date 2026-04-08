@@ -96,13 +96,8 @@ func getConfigDir() (string, error) {
 		}
 		configDir = filepath.Join(appData, "bdisk")
 	case os.Getenv("HOME") != "": // macOS/Linux
-		// 检查是否是macOS
-		if _, err := os.Stat(filepath.Join(home, "Library", "Application Support")); err == nil {
-			configDir = filepath.Join(home, "Library", "Application Support", "bdisk")
-		} else {
-			// Linux: ~/.local/cfg/bdisk
-			configDir = filepath.Join(home, ".local", "cfg", "bdisk")
-		}
+		// Linux/macOS: ~/.local/share/bdisk
+		configDir = filepath.Join(home, ".local", "share", "bdisk")
 	default:
 		// 回退到用户目录下的.bdisk
 		configDir = filepath.Join(home, ".bdisk")
