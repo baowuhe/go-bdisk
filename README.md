@@ -31,7 +31,7 @@
 | `cp <src> <dest>` | 复制文件/文件夹 |
 | `mv <src> <dest>` | 移动文件/文件夹 |
 | `rm <path> [...]` | 删除文件/文件夹（支持批量） |
-| `status` | 查看用户信息和网盘配额 |
+| `status` | 查看用户信息 |
 
 ### SDK 功能
 
@@ -244,8 +244,8 @@ func main() {
 
 | 系统 | 路径 |
 |------|------|
-| Linux | `~/.local/cfg/bdisk/` |
-| macOS | `~/Library/Application Support/bdisk/` |
+| Linux | `~/.local/share/go-bdisk/` |
+| macOS | `~/.local/share/go-bdisk/` |
 | Windows | `%LOCALAPPDATA%\bdisk\` |
 
 ### 配置文件
