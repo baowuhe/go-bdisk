@@ -89,3 +89,6 @@ config.yaml
 # Logs
 *.log
 logs/
+
+*.mp4
+*.mp3
